@@ -6,7 +6,9 @@ import torch.nn as nn
 from torch.autograd import Variable
 from sklearn.preprocessing import MinMaxScaler
 
-training_set = pd.read_csv("fa_increasing_trend.data")
+training_set = pd.read_csv("./data/fa_increasing_trend.data")
+#training_set = pd.read_csv("./data/stockmarket_f.data")
+
 
 # # Plot time series
 # plt.figure()
