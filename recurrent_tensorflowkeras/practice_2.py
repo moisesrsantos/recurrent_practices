@@ -1,49 +1,39 @@
 from numpy import array
-from keras.models import Sequential
-from keras.layers import LSTM
-from keras.layers import Dense
-from keras.layers import Bidirectional
-from keras.layers import Flatten
-from keras.layers import TimeDistributed
-from keras.layers.convolutional import Conv1D
-from keras.layers.convolutional import MaxPooling1D
+import tensorflow as tf
+from tensorflow import keras
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
+gpus = tf.config.experimental.list_physical_devices('GPU')
+tf.config.experimental.set_virtual_device_configuration(gpus[0],[tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
 
 
 def vanilla_lstm(X, hidden, n_steps, n_features):
     X = X.reshape((X.shape[0], X.shape[1], n_features))
-    model = Sequential()
-    model.add(LSTM(hidden, activation='relu', input_shape=(n_steps, n_features)))
-    model.add(Dense(1))
-    model.compile(optimizer='adam', loss='mse')
+    model = keras.Sequential()
+    model.add(keras.layers.LSTM(units = hidden, activation = 'relu', input_shape = (n_steps, n_features)))
+    model.add(keras.layers.Dense(units = 1))
+    model.compile(optimizer = keras.optimizers.Adam(), loss = 'mean_squared_error')
     return X, model
 
 def stacked_lstm(X, hidden, n_steps, n_features):
     X = X.reshape((X.shape[0], X.shape[1], n_features))
-    model = Sequential()
-    model.add(LSTM(hidden, activation='relu', return_sequences=True, input_shape=(n_steps, n_features)))
-    model.add(LSTM(hidden, activation='relu'))
-    model.add(Dense(1))
-    model.compile(optimizer='adam', loss='mse')
+    model = keras.Sequential()
+    model.add(keras.layers.LSTM(hidden, activation='relu', return_sequences=True, input_shape=(n_steps, n_features)))
+    model.add(keras.layers.LSTM(hidden, activation='relu'))
+    model.add(keras.layers.Dense(units = 1))
+    model.compile(optimizer = keras.optimizers.Adam(), loss = 'mean_squared_error')
     return X, model
 
 def bidirectional_lstm(X, hidden, n_steps, n_features):
     X = X.reshape((X.shape[0], X.shape[1], n_features))
-    model = Sequential()
-    model.add(Bidirectional(LSTM(hidden, activation='relu'), input_shape=(n_steps, n_features)))
-    model.add(Dense(1))
-    model.compile(optimizer='adam', loss='mse')
-    return X, model
-
-def cnn_lstm(X, hidden, n_steps, n_features, n_seq):
-    X = X.reshape((X.shape[0], n_seq, n_steps, n_features))
-    model = Sequential()
-    model.add(TimeDistributed(Conv1D(filters=64, kernel_size=1, activation='relu'), input_shape=(None, n_steps, n_features)))
-    model.add(TimeDistributed(MaxPooling1D(pool_size=2)))
-    model.add(TimeDistributed(Flatten()))
-    model.add(LSTM(hidden, activation='relu'))
-    model.add(Dense(1))
-    model.compile(optimizer='adam', loss='mse')
+    model = keras.Sequential()
+    model.add(keras.layers.Bidirectional(keras.layers.LSTM(hidden, activation='relu', return_sequences = True), input_shape=(n_steps, n_features)))
+    model.add(keras.layers.Bidirectional(keras.layers.LSTM(units = hidden, activation='relu')))
+    model.add(keras.layers.Dense(units = 1))
+    model.compile(optimizer = keras.optimizers.Adam(), loss = 'mean_squared_error')
     return X, model
 
 
@@ -61,22 +51,38 @@ def split_sequence(sequence, n_steps):
         y.append(seq_y)
     return array(X), array(y)
 
-raw_seq = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 
-n_steps = 4
+df = pd.read_csv("~/Documentos/recurrent_practices/recurrent_tensorflowkeras/data/fa_increasing_trend.data", header = None)
+
+raw_seq = df.values
+plt.figure(1)
+plt.plot(raw_seq)
+plt.show()
+
+n_steps = 25
 X, y = split_sequence(raw_seq, n_steps)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, shuffle = False)
+
+
 n_features = 1
-n_seq = 2
-n_steps = 2
 hidden = 50
+X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], n_features))
 
-#X, model = bidirectional_lstm(X, hidden, n_steps, n_features)
-X, model = cnn_lstm(X, hidden, n_steps, n_features, n_seq)
+X_train, model = bidirectional_lstm(X_train, hidden, n_steps, n_features)
+#X_train, model = stacked_lstm(X_train, hidden, n_steps, n_features)
 
-model.fit(X, y, epochs=500, verbose=0)
 
-x_input = array([60, 70, 80, 90])
-#x_input = x_input.reshape((1, n_steps, n_features))
-x_input = x_input.reshape((1, n_seq, n_steps, n_features))
+model.fit(X_train, y_train, epochs=20,
+    batch_size=16,
+    validation_split=0.1,
+    verbose=0,
+    shuffle=False)
+
+x_input = X_test
 yhat = model.predict(x_input, verbose=0)
-print(yhat)
+
+plt.figure(2)
+plt.plot(y_test)
+plt.plot(yhat)
+plt.show()
