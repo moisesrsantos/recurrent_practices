@@ -27,7 +27,7 @@ def split_sequence(sequence, n_steps):
     return array(X), array(y)
 
 
-df = pd.read_csv("./data/export_dataframe.csv", header=None)
+df = pd.read_csv("./data/fa_increasing_trend.data", header=None)
 
 raw_seq = df.values
 plt.figure(1)
@@ -43,7 +43,7 @@ n_features = 1
 hidden = 50
 X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], n_features))
 
-X_train, model = bidirectional_lstm(X_train, hidden, n_steps, n_features)
+X_train, model = vanilla_lstm(X_train, hidden, n_steps, n_features)
 
 model.compile(optimizer=keras.optimizers.Adam(learning_rate=0.01, decay = 1e-4), loss='mean_squared_error')
 
